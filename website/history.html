@@ -1,0 +1,577 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <title>Quality of Life</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <script src="https://api.tiles.mapbox.com/mapbox-gl-js/v2.14.1/mapbox-gl.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@700&family=Fira+Sans:wght@300&family=Passion+One:wght@900&display=swap" rel="stylesheet">
+
+    <link
+      href="https://api.tiles.mapbox.com/mapbox-gl-js/v2.14.1/mapbox-gl.css"
+      rel="stylesheet"
+    />
+    <style>
+      body {
+        margin: 0;
+        padding: 0;
+      }
+      h2 {
+        font-size: medium;
+        font-family:monospace;
+        margin-bottom: 0;
+        margin-top: 0;
+      }
+      #map { position: absolute; top: 0; bottom: 0; width: 100%; }
+      .map-overlay {
+            position: absolute;
+            overflow: auto;
+            color:white
+        }
+        #nav-overlay {
+            left: 0;
+            right: 0;
+            height: 8vh;
+            display: flex;
+            padding: 0 1vw;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        #logo {
+            display: flex;
+            align-items: flex-start;
+        }
+
+        #logo a {
+            position: relative;
+            text-decoration: none;
+            color: #ffffff;
+            font-weight: 900;
+            font-size: 2vh;
+            padding: 1vh 2vh;
+            background-color: #a6d3a0;
+            border-radius: 3vh;
+            transition: background-color 0.3s ease;
+        }
+
+        #logo a:hover {
+            background-color: #99ddff;
+        }
+
+        #buttons {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .button {
+            background-color: #92ADD8;
+            color: #ffffff;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            padding: 5px;
+        }
+
+        .button:hover {
+            background-color: #656565;
+        }
+
+        #year {
+            display: inline-block;
+            left: 1vw;
+            top:10vh;
+            font-size: 20px;
+            color: #656565;
+        }
+
+        #explain {
+            display: inline-block;
+            width: 20vw;
+            height: 20vh;
+            right: 1vw;
+            top:8vh;
+            font-size: 1em;
+            color: #ffffff;
+        }
+        
+
+        #animate-button {
+            background-color: #999;
+            color: #ffffff;
+            font-family:monospace;
+            padding: 5px 10px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            width: 100%;
+        }
+
+        #animate-button.active {
+            background-color: #92ADD8;
+        }
+
+        .hidden {
+            display: none;
+        }
+        .show {
+            display: block;
+            padding: 0.6em;
+            background-color: #92ADD8;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+            text-align: justify;
+            border-radius: 5px;
+        }
+        #slider {
+            width: 97%;
+            margin-bottom: 20px;
+            margin-top: 20px;
+        }
+        #legend {
+            padding: 10px;
+            line-height: 18px;
+            margin-bottom: 20px;
+            font-family:monospace;
+            bottom: 10px;
+            right: 10px;
+        }
+        .legend-key {
+            display: inline-block;
+            border-radius: 20%;
+            width: 10px;
+            height: 10px;
+            margin-right: 5px;
+        }
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0, 0, 0, 0.7);
+            }
+
+        .modal img {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            max-width: 90%;
+            max-height: 90%;
+            }
+            .close {
+            position: absolute;
+            top: 15px;
+            right: 25px;
+            font-size: 30px;
+            font-weight: bold;
+            color: white;
+            cursor: pointer;
+            }
+
+        .close:hover,
+        .close:focus {
+            color: #999;
+            text-decoration: none;
+            cursor: pointer;
+            }
+    </style>
+  </head>
+  <body>
+    <div id="map"></div>
+    <div class="map-overlay" id="nav-overlay">
+        <div id="logo">
+            <a href="./current.html">Find a Place to Live</a>
+        </div>
+        <div id="buttons">
+        </div>
+    </div>
+    <div class="map-overlay" id="year">
+        <!-- This part ref https://docs.mapbox.com/mapbox-gl-js/example/timeline-animation/-->
+        <div class='session' id='sliderbar'>
+            <h2>Year: <label id='active-year'>2016</label></h2>
+            <input id='slider' class='row' type='range' min='2016' max='2020' step='1' value='2016' />
+          </div>
+        <button id="animate-button" class="">Auto</button>
+    
+    </div>
+
+    <div class="map-overlay" id="explain"></div>
+    <div class="map-overlay" id="legend">
+        <div id="imgs" class="modal">
+            <span class="close">&times;</span>
+            <img src="" alt="Image", id="modalImg">
+        </div>
+    </div>
+    <script>
+      // define access token
+      mapboxgl.accessToken = 'pk.eyJ1IjoidHMyM21lZyIsImEiOiJjbGpsbXd3MXgwdnphM2VrMjI4OWUzN2h4In0.C14aWUGcGvOoJEs-IqQ_nw';
+
+      // create map
+      const map = new mapboxgl.Map({
+        container: 'map', // container id
+        style: 'mapbox://styles/ts23meg/cllciv85h00v701pb8eecatsw', // map style URL from Mapbox Studio
+        zoom: 10,
+        center: [121.61584748102158, 25.029704391775606]
+      });
+      
+
+      // wait for map to load before adjusting it
+      map.on('load', () => {
+
+        const years = ['2016', '2017', '2018', '2019', '2020'];
+        
+        let intervalId;
+
+        //interactive slider and text
+        document.getElementById('slider').addEventListener('input', (event) => {
+            clearInterval(intervalId)
+            document.getElementById('animate-button').className = '';
+            const year = event.target.value
+            years.forEach((y,m) => {
+                if (year === y) {
+                    map.setLayoutProperty(y, 'visibility', 'visible');
+                    map.setLayoutProperty(metroName[m], 'visibility', 'visible');
+                } else {
+                    map.setLayoutProperty(y, 'visibility', 'none');
+                    map.setLayoutProperty(metroName[m], 'visibility', 'none');
+                }
+        }); 
+        document.getElementById('active-year').innerText = year;
+        });
+        let currentYearIndex = parseInt(document.getElementById('active-year').textContent)-2016;
+        
+        // auto display
+        function activateYearAnimation() {
+          console.log(currentYearIndex)
+          const currentYear = years[currentYearIndex];
+          document.getElementById('active-year').textContent = currentYear;
+          const slider = document.getElementById('slider');
+          slider.value = years[currentYearIndex];
+          years.forEach((layerId, m) => {
+            if (layerId === currentYear) {
+              map.setLayoutProperty(layerId, 'visibility', 'visible');
+              map.setLayoutProperty(metroName[m], 'visibility', 'visible');
+            } else {
+              map.setLayoutProperty(layerId, 'visibility', 'none');
+              map.setLayoutProperty(metroName[m], 'visibility', 'none');
+
+            }
+          });
+
+          currentYearIndex = (currentYearIndex + 1) % years.length;
+        }
+
+        document.getElementById('animate-button').addEventListener('click', (event) => {
+            if (document.getElementById('animate-button').className === '') {
+                document.getElementById('animate-button').classList.add('active');
+                activateYearAnimation();
+                intervalId = setInterval(activateYearAnimation, 7000); // Every 7 seconds
+            } else {
+                document.getElementById('animate-button').className = ''
+                clearInterval(intervalId)
+            }
+            
+        });
+
+        const mid = [
+            [[ 121.36385929176231, 25.069040703805136], 12],
+            [[121.43940968293767, 25.173717335704854], 12],
+            [[121.5151, 25.0510], 10],
+        ]
+
+        const btns = [
+            'Trend 1',
+            'Trend 2',
+            'back'
+        ]
+
+        const t = [
+            "LinKou District in New Taipei City, Taiwan, gained prominence after the 2017 launch of the Taoyuan Airport MRT Line. The enhanced accessibility attracted more residents, making LinKou a popular residential choice. The improved commute and urban amenities drew those seeking a modern lifestyle with suburban tranquillity. The Airport MRT Line's strategic access transformed LinKou into a sought-after living destination, highlighting the impact of efficient transportation on urban development.",
+            "Due to strategic policy initiatives, Tamsui New Town witnessed the establishment of numerous essential infrastructures. The inauguration of the Tamsui Light Rail, in particular, greatly enhanced the area's transportation connectivity, enabling residents to move more effortlessly. This positive impact highlights the pivotal role of the light rail in improving accessibility and fostering greater ease of movement for the community.",
+            ''
+        ]
+        // create closer looks
+        const btn = document.getElementById('buttons');
+        const exp = document.getElementById('explain');
+        btns.forEach((layeri, i) => {
+          // explain text
+            const content = document.createElement('p');
+            content.innerHTML = `${t[i]}`
+            content.id = i
+            content.className = 'hidden';
+            exp.appendChild(content);
+
+          
+            // btns
+            const item = document.createElement('button');
+            item.style.cursor= 'pointer';
+            item.className = 'button';
+            item.innerHTML = `${layeri}`;        
+
+            item.onclick = () => {
+            //ref https://docs.mapbox.com/mapbox-gl-js/example/flyto/
+            const targetCoordinates = mid[i][0]; 
+            
+                map.flyTo({
+                    center: targetCoordinates,
+                    zoom: mid[i][1],
+                    speed: 0.8, 
+                });
+
+                // content show
+                for (let j = 0; j < 3; j++) {
+                    let targetExplanation = document.getElementById(`${j}`);
+                    if (i===2 & j===2) {
+                        targetExplanation.className = 'hidden';
+                    } 
+                    else if (j === i) {
+                        targetExplanation.classList.add('show');
+                        targetExplanation.classList.remove('hidden');
+                    }
+                    else {
+                        targetExplanation.classList.add('hidden');
+                        targetExplanation.classList.remove('show');
+                    }}
+                };
+            btn.appendChild(item);
+        });
+        
+        // add layers
+        const layerName = [
+        "105|kmea_1", "106|kmea_1", "107|kmea_1", "108|kmea_1", "109|kmea_1"
+        ];
+        
+        map.addSource('cluster', {
+            type: 'vector',
+            url: 'mapbox://ts23meg.5b7wrqv1'
+        });
+        layerName.forEach((keyid, i) => {
+            if (i===0) {
+                var vis = 'visible'
+            }
+            else {
+                var vis = 'none'
+            }
+          map.addLayer({
+                "id": years[i],
+                "type": "fill",
+                "paint": {
+                "fill-color": [
+                    "step",
+                    [
+                    "get",
+                    keyid
+                    ],
+                    "#fd1212",
+                    1,
+                    "#ff8a05",
+                    2,
+                    "#fff71a",
+                    3,
+                    "#0ffa0f",
+                    4,
+                    "#0ad2f5",
+                    5,
+                    "#1229f8",
+                    6,
+                    "#a118f7"
+                ],
+                "fill-opacity": 0.5,
+                "fill-outline-color": "rgba(0, 0, 0, 0.42)"
+                },
+                "layout": {"visibility": vis},
+                "source": "cluster",
+                "source-layer": "clustering-658s44"
+            }
+
+          )
+        });
+        // add town line
+        map.addSource('town', {
+            type: 'vector',
+            url: 'mapbox://ts23meg.cs1y8pcj'
+        });
+        map.addLayer({
+            "id": "town",
+            "type": "line",
+            "paint": {
+              "line-color": "rgba(94, 34, 34, 0.42)",
+              "line-width": 2
+            },
+            "layout": {},
+            "source": "town",
+            "source-layer": "town-0wys8y"
+          })
+          // add metro
+        metroName = [
+            'm2016',
+            'm2017',
+            'm2018',
+            'm2019',
+            'm2020'
+        ]
+        mColor = [
+            [
+                "match",
+                ["get","line"],
+                ["O"],"rgb(242, 162, 13)",
+                ["G"],"#349060",
+                ["BL"],"#1572ba",
+                ["GR"],"#bdd617",
+                ["P"],"#eb9492",
+                ["BR"],"#9b771c",
+                ["R"],"#eb3532",
+                "rgba(0, 0, 0, 0)"
+                ],
+                [
+                "match",
+                ["get","line"],
+                ["O"],"rgb(242, 162, 13)",
+                ["G"],"#349060",
+                ["BL"],"#1572ba",
+                ["GR"],"#bdd617",
+                ["P"],"#eb9492",
+                ["BR"],"#9b771c",
+                ["R"],"#eb3532",
+                ["A"],"#84099a",
+                "rgba(0, 0, 0, 0)"
+                ],
+                [
+                "match",
+                ["get","line"],
+                ["O"],"rgb(242, 162, 13)",
+                ["G"],"#349060",
+                ["BL"],"#1572ba",
+                ["GR"],"#bdd617",
+                ["P"],"#eb9492",
+                ["BR"],"#9b771c",
+                ["R"],"#eb3532",
+                ["A"],"#84099a",
+                ["V"],"#fed8d8",
+                "rgba(0, 0, 0, 0)"
+                ],
+                [
+                "match",
+                ["get","line"],
+                ["O"],"rgb(242, 162, 13)",
+                ["G"],"#349060",
+                ["BL"],"#1572ba",
+                ["GR"],"#bdd617",
+                ["P"],"#eb9492",
+                ["BR"],"#9b771c",
+                ["R"],"#eb3532",
+                ["A"],"#84099a",
+                ["V"],"#fed8d8",
+                ["Y"],"#f8d420",
+                "rgba(0, 0, 0, 0)"
+                ],
+                [
+                "match",
+                ["get","line"],
+                ["O"],"rgb(242, 162, 13)",
+                ["G"],"#349060",
+                ["BL"],"#1572ba",
+                ["GR"],"#bdd617",
+                ["P"],"#eb9492",
+                ["BR"],"#9b771c",
+                ["R"],"#eb3532",
+                ["A"],"#84099a",
+                ["V"],"#fed8d8",
+                ["Y"],"#f8d420",
+                ["V1"],"#fed8d8",
+                "rgba(0, 0, 0, 0)"
+                ]
+        ]
+        map.addSource('metroline', {
+            type: 'vector',
+            url: 'mapbox://ts23meg.1mrnrzy1'
+        });
+        metroName.forEach((mName, m) => {
+            if (m===0) {
+                var vis = 'visible'
+            }
+            else {
+                var vis = 'none'
+            }
+            map.addLayer({
+                "id": mName,
+                "type": "line",
+                "paint": {
+                    "line-color": mColor[m],
+                    "line-width": 4,
+                },
+                
+                "layout": {"visibility": vis},
+                "source": "metroline",
+                "source-layer": "metroline-5vintb",        
+            })
+        })    
+        map.moveLayer('transit-label', 'm2020');
+
+        // pop up window
+        const modal = document.getElementById("imgs");
+        const span = document.querySelector(".close");
+
+        span.onclick = () => {
+        modal.style.display = "none";
+        };
+
+        window.onclick = (event) => {
+        if (event.target === modal) {
+            modal.style.display = "none";
+        }
+        };
+
+        // create legend ref https://docs.mapbox.com/help/tutorials/choropleth-studio-gl-pt-2/
+        const clusters = [
+        "Suburb: Remote and Desolate",
+        "Suburb: Small Town Settlement",
+        "Outskirt: Influx of New Residents",
+        "City Center",
+        "Close to Downtown: Convenient Transportation",
+        "Outskirt: High Population Density, Old Town",
+        "Downtown: New Taipei City"
+
+        ];
+        const colors = [
+        "#fd1212",
+        "#ff8a05",
+        "#fff71a",
+        "#0ffa0f",
+        "#0ad2f5",
+        "#1229f8",
+        "#a118f7"
+        ];
+
+        const legend = document.getElementById('legend');
+
+        clusters.forEach((layeri, i) => {
+          const color = colors[i];
+          const item = document.createElement('div');
+          item.style.cursor= 'pointer';
+          const key = document.createElement('span');
+          key.className = 'legend-key';
+          key.style.backgroundColor = color;
+
+          const value = document.createElement('span');
+          value.innerHTML = `${layeri}`;       
+          value.style.color = '#0A578F'  
+          item.onclick = () => {
+            modal.style.display = "block";
+            modalImg.src = "./pic/c" + i.toString() + ".png";
+
+          };
+          item.appendChild(key);
+          item.appendChild(value);
+          legend.appendChild(item);
+        });
+      });
+    </script>
+  </body>
+</html>
